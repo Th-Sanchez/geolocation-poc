@@ -3,6 +3,7 @@ package com.geolocationpoc.controller;
 import com.geolocationpoc.dto.Coordinate;
 import com.geolocationpoc.dto.RouteRequest;
 import com.geolocationpoc.dto.RouteResponse;
+import com.geolocationpoc.dto.ServicePoint;
 import com.geolocationpoc.service.CompositeRouteService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -26,7 +27,7 @@ public class RouteController {
 
     @PostMapping("/optimize")
     public RouteResponse optimizeRoute(@RequestBody RouteRequest request) {
-        return compositeService.calculateBestRoute(request);
+        return compositeService.optimizeBestRoute(request);
     }
 
     @PostMapping("/provider/{providerName}")
@@ -34,28 +35,24 @@ public class RouteController {
             @PathVariable String providerName,
             @RequestBody RouteRequest request) {
 
-        return compositeService.calculateWithProvider(providerName, request);
+        return compositeService.optimizeWithProvider(providerName, request);
     }
 
-    @PostMapping("/compare")
-    public List<RouteResponse> compareProviders(@RequestBody RouteRequest request) {
-        return compositeService.compareAllProviders(request);
+    // Helper endpoint for simple delivery scenarios
+    @PostMapping("/delivery")
+    public RouteResponse optimizeDelivery(@RequestBody SimpleDeliveryRequest request) {
+        List<ServicePoint> services = request.deliveryPoints().stream()
+                .map(point -> new ServicePoint(point.id(), point.location()))
+                .toList();
+
+        RouteRequest routeRequest = RouteRequest.simple(request.startLocation(), services);
+        return compositeService.optimizeBestRoute(routeRequest);
     }
 
-    @GetMapping("/simple")
-    public RouteResponse getSimpleRoute(
-            @RequestParam double origemLat,
-            @RequestParam double origemLng,
-            @RequestParam double destinoLat,
-            @RequestParam double destinoLng,
-            @RequestParam(defaultValue = "false") boolean optimizeOrder) {
+    public record SimpleDeliveryRequest(
+            Coordinate startLocation,
+            List<DeliveryPoint> deliveryPoints
+    ) {}
 
-        List<Coordinate> waypoints = List.of(
-                new Coordinate(origemLat, origemLng),
-                new Coordinate(destinoLat, destinoLng)
-        );
-
-        RouteRequest request = new RouteRequest(waypoints, "DRIVE", optimizeOrder, false);
-        return compositeService.calculateBestRoute(request);
-    }
+    public record DeliveryPoint(String id, Coordinate location) {}
 }

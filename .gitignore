@@ -32,3 +32,4 @@ build/
 ### VS Code ###
 .vscode/
 /.mvn/
+/src/main/resources/angelic-ivy-453823-i0-8c07471ca892.json

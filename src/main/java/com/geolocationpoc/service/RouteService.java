@@ -4,6 +4,6 @@ import com.geolocationpoc.dto.RouteRequest;
 import com.geolocationpoc.dto.RouteResponse;
 
 public interface RouteService {
-    RouteResponse calculateOptimizedRoute(RouteRequest request);
+    RouteResponse optimizeRoute(RouteRequest request);
     String providerName();
 }

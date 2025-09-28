@@ -21,15 +21,16 @@ public class CompositeRouteService {
         this.providers = providers;
     }
 
-    public RouteResponse calculateBestRoute(RouteRequest request) {
+    public RouteResponse optimizeBestRoute(RouteRequest request) {
         List<CompletableFuture<RouteResponse>> futures = providers.stream()
                 .map(provider -> CompletableFuture.supplyAsync(() -> {
                     try {
-                        Long startTime = System.currentTimeMillis();
-                        RouteResponse response = provider.calculateOptimizedRoute(request);
-                        Long endTime = System.currentTimeMillis();
+                        long startTime = System.currentTimeMillis();
+                        RouteResponse response = provider.optimizeRoute(request);
+                        long endTime = System.currentTimeMillis();
 
-                        System.out.printf("Provider %s took %dms%n", provider.providerName(), (endTime-startTime));
+                        System.out.printf("Provider %s took %dms%n",
+                                provider.providerName(), (endTime - startTime));
 
                         return response;
                     } catch (Exception e) {
@@ -42,29 +43,15 @@ public class CompositeRouteService {
         return futures.stream()
                 .map(CompletableFuture::join)
                 .filter(Objects::nonNull)
-                .min(Comparator.comparingLong(RouteResponse::durationSeconds))
-                .orElseThrow(() -> new RuntimeException("No routes available"));
+                .min(Comparator.comparingDouble(RouteResponse::totalDistanceMeters))
+                .orElseThrow(() -> new RuntimeException("No optimized routes available"));
     }
 
-    public RouteResponse calculateWithProvider(String providerName, RouteRequest request) {
+    public RouteResponse optimizeWithProvider(String providerName, RouteRequest request) {
         return providers.stream()
                 .filter(provider -> provider.providerName().equalsIgnoreCase(providerName))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Provider not found: " + providerName))
-                .calculateOptimizedRoute(request);
-    }
-
-    public List<RouteResponse> compareAllProviders(RouteRequest request) {
-        return providers.stream()
-                .map(provider -> {
-                    try {
-                        return provider.calculateOptimizedRoute(request);
-                    } catch (Exception e) {
-                        System.err.println("Provider " + provider.providerName() + " failed: " + e.getMessage());
-                        return null;
-                    }
-                })
-                .filter(Objects::nonNull)
-                .toList();
+                .optimizeRoute(request);
     }
 }
